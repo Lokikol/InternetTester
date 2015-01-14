@@ -79,9 +79,10 @@ public class RootFrameController {
 		
 		
 		boolean validation = true;
+		boolean auto = false;
 		try{
 			int test = Integer.parseInt(newInterval);
-			boolean auto = Boolean.parseBoolean(newAutostart);
+			auto = Boolean.parseBoolean(newAutostart);
 			boolean auto2 = Boolean.parseBoolean(newAutopopup);
 		}
 		catch(Exception e){
@@ -90,7 +91,8 @@ public class RootFrameController {
 		
 		if(validation){
 			m.setNewInput(new String[]{newUrl,newInterval,newTimeUnit,newAutostart,newAutopopup,""+sliderVal});
-			m.hideWhenShown();
+			if(auto)
+				m.hideWhenShown();
 		}
 		else{
 			handleCancel();
