@@ -19,6 +19,7 @@ import javax.swing.JMenuItem;
 import javax.swing.UIManager;
 import javax.swing.UnsupportedLookAndFeelException;
 
+import eu.derloki.util.async.AsyncHelper;
 import eu.derloki.util.properties.PropertiesHelper;
 import eu.derloki.util.tray.TrayHelper;
 
@@ -33,6 +34,7 @@ public class Controller {
 	private String selectedUrl;
 	private boolean autoStart;
 	private boolean autopopup;
+	private int sliderVal;
 	
 	private boolean started;
 	
@@ -41,8 +43,8 @@ public class Controller {
 	private final String INTERVAL = "interval";
 	private final String URL = "url";
 	private final String AUTOSTART="autostart";
-	private final String AUTOPOPUP="autopopup";
-	private final int maxCount = 20;
+	private final String AUTOPOPUP="minimize";
+	private final String SLIDERVAL="packetAverage";
 	
 	private ScheduledExecutorService executor;
 	private LinkedList<Packet> packetList;
@@ -56,6 +58,8 @@ public class Controller {
 	
 	private HashMap<String, Image> imageMap;
 	private String currentImage = "";
+	
+	private String currentStatus="";
 	
 	public Controller(Main ui){
 		try {
@@ -104,10 +108,18 @@ public class Controller {
 		}
 		
 		try{
-			autopopup = Boolean.parseBoolean(config.getProperty(AUTOPOPUP,"true"));
+			autopopup = Boolean.parseBoolean(config.getProperty(AUTOPOPUP,"false"));
 		}
 		catch(Exception e){
-			autoStart = true;
+			autoStart = false;
+			changed = true;
+		}
+		
+		try{
+			sliderVal = Integer.parseInt(config.getProperty(SLIDERVAL,""+1));
+		}
+		catch(Exception e){
+			sliderVal = 1;
 			changed = true;
 		}
 		
@@ -131,10 +143,26 @@ public class Controller {
 		imageMap.put("icon_nr",TrayHelper.getImage("resources/img/icon_nr.png"));
 		imageMap.put("icon_def",TrayHelper.getImage("resources/img/icon_def.png"));
 		
+		setStatusReport("Nut running");
+		
+	}
+	
+	public void setStatusReport(String s){
+		currentStatus = s;
+		
+		Platform.runLater(()->{
+			ui.showStatusReport(getCurrentStatus());
+		});
+	}
+	
+	public Image getImage(String name){
+		return imageMap.get(name);
 	}
 	
 	private void startExecutor() {
+	
 		if(!started){
+			setStatusReport("Calculating...");
 			started = true;
 			executor = new ScheduledThreadPoolExecutor(20);
 			
@@ -143,12 +171,12 @@ public class Controller {
 				
 				
 				Packet p = pingUrl(selectedUrl);
-				if(packetList.size() >= maxCount){
+				if(packetList.size() >= sliderVal){
 					packetList.removeFirst();
 				}
 				packetList.add(p);
 				
-				if(!lock){
+				if(!lock && started){
 					lock=true;
 					int countLostPackets = 0;
 					long countTime = 0;
@@ -158,6 +186,7 @@ public class Controller {
 					for (Packet packet : tmpList) {
 						if(packet.lost){
 							countLostPackets++;
+							countTime += packet.time;
 						}
 						else{
 							countTime+=packet.time;
@@ -185,9 +214,10 @@ public class Controller {
 					else if(pLostPacket < 80){
 						filled="l";
 					}
-					else{
+					else {
 						filled = "n";
 					}
+					
 					
 					String newImage = "icon_"+filled+color;
 					
@@ -195,6 +225,7 @@ public class Controller {
 						th.setImage(imageMap.get(newImage));
 					}
 					
+					setStatusReport(String.format("Average Time per Packet: %d%nPercentage of lost Packets: %d", mTime,pLostPacket)+"%");
 					
 					lock = false;
 				}
@@ -243,6 +274,13 @@ public class Controller {
 			});
 		});
 		
+		
+		th.addMenuItem("Status Report", ()->{
+			statusReport();
+		});
+		
+		
+		
 		th.addMenuItem("Exit", ()->{
 			Platform.runLater(()->{
 				try {
@@ -258,7 +296,7 @@ public class Controller {
 			startExecutor();
 		}
 		
-		if(autopopup){
+		if(!autopopup){
 			Platform.runLater(()->{
 				ui.showWhenHidden();
 			});
@@ -268,6 +306,9 @@ public class Controller {
 	
 	private void stopExecutor() {
 		if(started){
+			th.setImage(imageMap.get("icon_def"));
+			setStatusReport("Not running");
+			
 			executor.shutdown();
 			started = false;
 			startItem.setText("Start");
@@ -281,6 +322,7 @@ public class Controller {
 		config.setProperty(URL, selectedUrl);
 		config.setProperty(AUTOSTART,""+autoStart);
 		config.setProperty(AUTOPOPUP, ""+autopopup);
+		config.setProperty(SLIDERVAL,""+sliderVal);
 		
 		PropertiesHelper.save("config", "Changed Values");
 	}
@@ -292,7 +334,7 @@ public class Controller {
 		 try {
 		  final URL url = new URL(selectedUrl);
 		  final HttpURLConnection urlConn = (HttpURLConnection) url.openConnection();
-		  urlConn.setConnectTimeout(1000 * 10); // mTimeout is in seconds
+		  urlConn.setConnectTimeout(5000); // mTimeout is in seconds
 		  startTime = System.currentTimeMillis();
 		  urlConn.connect();
 		  final long endTime = System.currentTimeMillis();
@@ -315,6 +357,7 @@ public class Controller {
 		 endTimeF = System.currentTimeMillis();
 		 p.lost = true;
 		 p.time = (endTimeF - startTime);
+		 
 		 return p;
 		}
 
@@ -325,8 +368,9 @@ public class Controller {
 		String oldTimeUnit = selectedTimeUnit.name();
 		String oldAutostart = ""+autoStart;
 		String oldAutopopup = ""+autopopup;
+		String oldSliderval = ""+sliderVal;
 		
-		return new String[]{oldUrl,oldInterval,oldTimeUnit,oldAutostart,oldAutopopup};
+		return new String[]{oldUrl,oldInterval,oldTimeUnit,oldAutostart,oldAutopopup,oldSliderval};
 	}
 
 	public void setNewInput(String[] strings) {
@@ -335,6 +379,7 @@ public class Controller {
 		String newTimeUnit = strings[2];
 		String newAutostart = strings[3];
 		String newAutopopup = strings[4];
+		String newSliderVal = strings[5];
 		
 		stopExecutor();
 		
@@ -343,6 +388,7 @@ public class Controller {
 		selectedTimeUnit = TimeUnit.valueOf(newTimeUnit);
 		autoStart = Boolean.parseBoolean(newAutostart);
 		autopopup = Boolean.parseBoolean(newAutopopup);
+		sliderVal = Integer.parseInt(newSliderVal);
 		
 		save();
 		
@@ -351,5 +397,12 @@ public class Controller {
 		}
 	}
 	
+	public String getCurrentStatus(){
+		return currentStatus;
+	}
+	
+	public void statusReport(){
+		th.displayInfo("Status Report", getCurrentStatus());
+	}
 	
 }

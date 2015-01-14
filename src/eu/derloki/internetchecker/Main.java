@@ -6,6 +6,7 @@ import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Scene;
+import javafx.scene.image.Image;
 import javafx.scene.layout.AnchorPane;
 import javafx.scene.layout.BorderPane;
 import javafx.stage.Stage;
@@ -35,6 +36,10 @@ public class Main extends Application {
 		
 		initRootLayout();
 		
+		Image img = new Image("file:resources/img/icon_def.png");
+		
+		primaryStage.getIcons().add(img); 
+		
 		myInit();
 	
 		
@@ -57,6 +62,8 @@ public class Main extends Application {
 				con = new Controller(this);
 				con.afterUI();
 				controller.init();
+				
+				
 	}
 	
 	public void initRootLayout(){
@@ -85,14 +92,19 @@ public class Main extends Application {
 	}
 	
 	public void exit(boolean hardExit){
+		try{
 		
-		con.exit();
-		// TODO Auto-generated method stub
-		Lang.INSTANCE.saveUndefinedStrings("src/i18n/strings.properties");
-		Lang.INSTANCE.saveUndefinedStrings("src/i18n/strings_de_DE.properties");
-
-		config.setProperty("language", language);
-		PropertiesHelper.save("config", "Language setup");
+			con.exit();
+			// TODO Auto-generated method stub
+			Lang.INSTANCE.saveUndefinedStrings("src/i18n/strings.properties");
+			Lang.INSTANCE.saveUndefinedStrings("src/i18n/strings_de_DE.properties");
+	
+			config.setProperty("language", language);
+			PropertiesHelper.save("config", "Language setup");
+		}
+		catch(Exception e){
+			
+		}
 		
 		if(hardExit)
 			System.exit(0);
@@ -114,6 +126,11 @@ public class Main extends Application {
 
 	public void setNewInput(String[] strings) {
 		con.setNewInput(strings);
+		
+	}
+
+	public void showStatusReport(String p_statusReport) {
+		controller.showStatusReport(p_statusReport);
 		
 	}
 }
