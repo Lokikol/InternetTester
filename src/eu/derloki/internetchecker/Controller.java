@@ -26,7 +26,7 @@ import eu.derloki.util.tray.TrayHelper;
 public class Controller {
 
 	private Main ui;
-	private TrayHelper th;
+	private TrayHelper th = null;
 	private Properties config;
 	
 	private TimeUnit selectedTimeUnit;
@@ -143,8 +143,6 @@ public class Controller {
 		imageMap.put("icon_nr",TrayHelper.getImage("resources/img/icon_nr.png"));
 		imageMap.put("icon_def",TrayHelper.getImage("resources/img/icon_def.png"));
 		
-		setStatusReport("Nut running");
-		
 	}
 	
 	public void setStatusReport(String s){
@@ -153,6 +151,10 @@ public class Controller {
 		Platform.runLater(()->{
 			ui.showStatusReport(getCurrentStatus());
 		});
+		
+		if(th!=null)
+			th.setToolTip(String.format("Internet Tester%n%s",getCurrentStatus()));
+		
 	}
 	
 	public Image getImage(String name){
@@ -225,7 +227,8 @@ public class Controller {
 						th.setImage(imageMap.get(newImage));
 					}
 					
-					setStatusReport(String.format("Average Time per Packet: %d%nPercentage of lost Packets: %d", mTime,pLostPacket)+"%");
+					//setStatusReport(String.format("Average Time per Packet: %d%nPercentage of lost Packets: %d", mTime,pLostPacket)+"%");
+					setStatusReport(String.format("Ping: %d%nPackage loss: %d", mTime,pLostPacket)+"%");
 					
 					lock = false;
 				}
@@ -244,14 +247,27 @@ public class Controller {
 		executor.shutdown();
 	}
 
+	long startTime = System.currentTimeMillis();
+	long endTime = startTime;
+	boolean clicked = false;
 	public void afterUI() {
 		// TODO Auto-generated method stub
 		
 		
 		th = new TrayHelper("resources/img/icon_def.png", "Internet Tester",(event)->{
+			if(!clicked){
+				startTime = System.currentTimeMillis();
+			}
+			else{
+				endTime = System.currentTimeMillis();
+			}
+
+			
+			//thread starten und times überprüfen
+			/*
 			Platform.runLater(()->{
 				ui.showWhenHidden();
-			});
+			});*/
 		 });
 		
 		startItem = th.addMenuItem("Start", ()->{
@@ -291,6 +307,8 @@ public class Controller {
 				}
 			});
 		});
+		
+		setStatusReport("Nut running");
 		
 		if(autoStart){
 			startExecutor();

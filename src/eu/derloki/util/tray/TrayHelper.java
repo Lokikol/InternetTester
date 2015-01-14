@@ -218,4 +218,8 @@ public class TrayHelper {
 		tray.setImage(image);
 	}
 	
+	public void setToolTip(String s){
+		tray.setToolTip(s);
+	}
+	
 }
