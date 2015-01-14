@@ -88,8 +88,10 @@ public class RootFrameController {
 			validation = false;
 		}
 		
-		if(validation)
+		if(validation){
 			m.setNewInput(new String[]{newUrl,newInterval,newTimeUnit,newAutostart,newAutopopup,""+sliderVal});
+			m.hideWhenShown();
+		}
 		else{
 			handleCancel();
 		}

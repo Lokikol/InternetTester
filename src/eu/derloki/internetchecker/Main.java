@@ -133,4 +133,10 @@ public class Main extends Application {
 		controller.showStatusReport(p_statusReport);
 		
 	}
+	
+	public void hideWhenShown(){
+		if(primaryStage.isShowing()){
+			primaryStage.hide();
+		}
+	}
 }

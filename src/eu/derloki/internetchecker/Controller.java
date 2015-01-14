@@ -13,11 +13,20 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
+
+
+
 import javafx.application.Platform;
+
+
+
 
 import javax.swing.JMenuItem;
 import javax.swing.UIManager;
 import javax.swing.UnsupportedLookAndFeelException;
+
+
+
 
 import eu.derloki.util.async.AsyncHelper;
 import eu.derloki.util.properties.PropertiesHelper;
@@ -59,7 +68,9 @@ public class Controller {
 	private HashMap<String, Image> imageMap;
 	private String currentImage = "";
 	
-	private String currentStatus="";
+	private String currentStatusUI="";
+	private String currentStatusTT="";
+	private String currentStatusBubble="";
 	
 	public Controller(Main ui){
 		try {
@@ -146,14 +157,22 @@ public class Controller {
 	}
 	
 	public void setStatusReport(String s){
-		currentStatus = s;
+		setStatusReport(s,s,s);
+		
+	}
+	
+	private void setStatusReport(String tt, String sui, String bubble) {
+		// TODO Auto-generated method stub
+		currentStatusTT = tt;
+		currentStatusBubble=bubble;
+		currentStatusUI=sui;
 		
 		Platform.runLater(()->{
-			ui.showStatusReport(getCurrentStatus());
+			ui.showStatusReport(getCurrentStatusUI());
 		});
 		
 		if(th!=null)
-			th.setToolTip(String.format("Internet Tester%n%s",getCurrentStatus()));
+			th.setToolTip(String.format("Internet Tester%n%s",getCurrentStatusTT()));
 		
 	}
 	
@@ -228,7 +247,11 @@ public class Controller {
 					}
 					
 					//setStatusReport(String.format("Average Time per Packet: %d%nPercentage of lost Packets: %d", mTime,pLostPacket)+"%");
-					setStatusReport(String.format("Ping: %d%nPackage loss: %d", mTime,pLostPacket)+"%");
+					
+					String tt = String.format("Ping: %d%nPackage loss: %d", mTime,pLostPacket)+"%";
+					String sui = String.format("Ping:\t\t\t %d%nPackage loss:\t %d", mTime,pLostPacket)+"%";
+					String bubble = String.format("Ping:\t\t %d%nPackage loss:\t %d", mTime,pLostPacket)+"%";
+					setStatusReport(tt,sui,bubble);
 					
 					lock = false;
 				}
@@ -242,6 +265,8 @@ public class Controller {
 		}
 	}
 
+	
+
 	public void exit(){
 		th.exit();
 		executor.shutdown();
@@ -250,6 +275,7 @@ public class Controller {
 	long startTime = System.currentTimeMillis();
 	long endTime = startTime;
 	boolean clicked = false;
+	boolean doubleclick = false;
 	public void afterUI() {
 		// TODO Auto-generated method stub
 		
@@ -257,11 +283,33 @@ public class Controller {
 		th = new TrayHelper("resources/img/icon_def.png", "Internet Tester",(event)->{
 			if(!clicked){
 				startTime = System.currentTimeMillis();
+				new Thread(()->{
+					try {
+						Thread.sleep(200);
+					} catch (Exception e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					}
+					if(!doubleclick){
+						statusReport();
+					}
+					else{
+						Platform.runLater(()->{
+							ui.showWhenHidden();
+						});
+					}
+					
+					doubleclick = false;
+					clicked = false;
+				}).start();
+				clicked = true;
 			}
 			else{
 				endTime = System.currentTimeMillis();
+				doubleclick = true;
 			}
 
+			
 			
 			//thread starten und times überprüfen
 			/*
@@ -415,12 +463,21 @@ public class Controller {
 		}
 	}
 	
-	public String getCurrentStatus(){
-		return currentStatus;
+	public String getCurrentStatusUI(){
+		return currentStatusUI;
+	}
+	
+	public String getCurrentStatusTT(){
+		return currentStatusTT;
+	}
+	
+	public String getCurrentStatusBubble(){
+		return currentStatusBubble;
 	}
 	
 	public void statusReport(){
-		th.displayInfo("Status Report", getCurrentStatus());
+		if(th!=null)
+			th.displayInfo("Status Report", getCurrentStatusBubble());
 	}
 	
 }
